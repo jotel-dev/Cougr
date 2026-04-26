@@ -1,8 +1,9 @@
 [package]
-name = "reversi"
+name = "angry_birds"
 version = "0.1.0"
 edition = "2021"
-description = "Reversi on-chain game using Cougr-Core ECS framework on Stellar Soroban"
+publish = false
+description = "Angry Birds turn-based physics puzzle using Cougr-Core ECS framework on Stellar Soroban"
 license = "MIT OR Apache-2.0"
 
 [lib]
@@ -10,7 +11,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 soroban-sdk = "25.1.0"
-cougr-core = "1.0.0"
+cougr-core = { path = "../../" }
 
 [dev-dependencies]
 soroban-sdk = { version = "25.1.0", features = ["testutils"] }

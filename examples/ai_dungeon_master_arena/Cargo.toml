@@ -1,16 +1,16 @@
 [package]
-name = "cross_asset_racing_league"
+name = "ai-dungeon-master-arena"
 version = "0.1.0"
 edition = "2021"
-description = "Cross-asset racing league example with payment-driven gameplay and stellar-zk anti-cheat"
+description = "AI Dungeon Master Arena with x402-paid actions and stellar-zk run proofs"
 license = "MIT OR Apache-2.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cougr-core = "1.0.0"
 soroban-sdk = "25.1.0"
+cougr-core = "1.0.0"
 
 [dev-dependencies]
 soroban-sdk = { version = "25.1.0", features = ["testutils"] }
@@ -18,5 +18,13 @@ soroban-sdk = { version = "25.1.0", features = ["testutils"] }
 [profile.release]
 opt-level = "z"
 overflow-checks = true
-lto = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
 codegen-units = 1
+lto = true
+
+[profile.release-with-logs]
+inherits = "release"
+debug-assertions = true
