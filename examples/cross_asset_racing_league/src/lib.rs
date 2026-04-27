@@ -7,17 +7,15 @@ use soroban_sdk::{
 
 pub mod components;
 pub mod helpers;
-pub mod types;
 pub mod systems;
+pub mod types;
 
 #[cfg(test)]
 mod test;
 
 use crate::helpers::assert_initialized;
-use crate::types::{
-    DataKey, GameState, PlayerStanding, ProofInput, Race, RacingError,
-};
-use crate::systems::{RaceSystem, PaymentSystem};
+use crate::systems::{PaymentSystem, RaceSystem};
+use crate::types::{DataKey, GameState, PlayerStanding, ProofInput, Race, RacingError};
 
 #[contract]
 pub struct CrossAssetRacingLeague;

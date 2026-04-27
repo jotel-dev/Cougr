@@ -1,5 +1,5 @@
-use soroban_sdk::{Env, Vec};
 use crate::types::CellType;
+use soroban_sdk::{Env, Vec};
 
 pub fn create_maze(env: &Env) -> Vec<CellType> {
     let mut maze: Vec<CellType> = Vec::new(env);

@@ -53,9 +53,9 @@ pub enum GameError {
     InvalidPosition = 5,
 }
 
+use crate::components::{Ghost, Position};
 /// Storage keys
 use cougr_core::event::Event;
-use crate::components::{Position, Ghost};
 
 /// Complete game state stored on-chain
 #[contracttype]

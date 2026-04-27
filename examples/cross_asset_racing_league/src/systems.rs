@@ -1,14 +1,14 @@
-use soroban_sdk::{symbol_short, Address, Env, Vec, panic_with_error, BytesN};
-use crate::types::{
-    Race, DataKey, RacingError, GameState, PlayerStanding, VehicleState, BoostState,
-    MAX_RACERS_PER_RACE, RACE_STATE_REGISTRATION, RACE_STATE_ACTIVE, RACE_STATE_COMPLETED,
-    BOOST_STANDARD, BOOST_LEGENDARY, BOOST_STANDARD_COST, BOOST_PREMIUM, BOOST_PREMIUM_COST,
-    BOOST_LEGENDARY_COST, ProofInput
-};
+use crate::components::{BoostComponent, VehicleComponent};
 use crate::helpers::{assert_initialized, assert_owner, verify_proof_stub};
-use crate::components::{VehicleComponent, BoostComponent};
+use crate::types::{
+    BoostState, DataKey, GameState, PlayerStanding, ProofInput, Race, RacingError, VehicleState,
+    BOOST_LEGENDARY, BOOST_LEGENDARY_COST, BOOST_PREMIUM, BOOST_PREMIUM_COST, BOOST_STANDARD,
+    BOOST_STANDARD_COST, MAX_RACERS_PER_RACE, RACE_STATE_ACTIVE, RACE_STATE_COMPLETED,
+    RACE_STATE_REGISTRATION,
+};
 use cougr_core::component::ComponentTrait;
 use cougr_core::simple_world::SimpleWorld;
+use soroban_sdk::{panic_with_error, symbol_short, Address, BytesN, Env, Vec};
 
 pub struct RaceSystem;
 

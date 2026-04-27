@@ -1,12 +1,11 @@
-use soroban_sdk::{Env, Vec, symbol_short};
-use cougr_core::event::{Event, CollisionEvent};
-use cougr_core::event::EventTrait;
+use crate::components::{Ghost, Position};
 use crate::types::{
-    GameState, Direction, CellType, GhostMode, 
-    MAZE_WIDTH, MAZE_HEIGHT, PELLET_POINTS, POWER_PELLET_POINTS, 
-    POWER_MODE_DURATION, GHOST_POINTS, PACMAN_ENTITY_ID
+    CellType, Direction, GameState, GhostMode, GHOST_POINTS, MAZE_HEIGHT, MAZE_WIDTH,
+    PACMAN_ENTITY_ID, PELLET_POINTS, POWER_MODE_DURATION, POWER_PELLET_POINTS,
 };
-use crate::components::{Position, Ghost};
+use cougr_core::event::EventTrait;
+use cougr_core::event::{CollisionEvent, Event};
+use soroban_sdk::{symbol_short, Env, Vec};
 
 pub struct GameSystem;
 

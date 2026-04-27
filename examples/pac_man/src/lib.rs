@@ -1,25 +1,25 @@
 #![no_std]
 
-use soroban_sdk::{contract, contractimpl, symbol_short, Env, Vec};
+use cougr_core::component::ComponentTrait;
 use cougr_core::component::Position as CorePosition;
 use cougr_core::event::Event;
-use cougr_core::component::ComponentTrait;
+use soroban_sdk::{contract, contractimpl, symbol_short, Env, Vec};
 
 pub mod components;
-pub mod types;
 pub mod maze;
 pub mod systems;
+pub mod types;
 
 #[cfg(test)]
 mod test;
 
-use crate::components::{Position, Ghost};
-use crate::types::{
-    GameState, Direction, CellType, DataKey, 
-    INITIAL_LIVES, GHOST_ENTITY_ID_START, POWER_PELLET_POINTS, PELLET_POINTS
-};
-use crate::systems::GameSystem;
+use crate::components::{Ghost, Position};
 use crate::maze::create_maze;
+use crate::systems::GameSystem;
+use crate::types::{
+    CellType, DataKey, Direction, GameState, GHOST_ENTITY_ID_START, INITIAL_LIVES, PELLET_POINTS,
+    POWER_PELLET_POINTS,
+};
 
 #[contract]
 pub struct PacManContract;

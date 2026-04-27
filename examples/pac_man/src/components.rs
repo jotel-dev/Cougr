@@ -1,7 +1,7 @@
-use soroban_sdk::{contracttype, symbol_short};
+use crate::types::{Direction, GhostMode, MAZE_WIDTH, PACMAN_ENTITY_ID};
 use cougr_core::component::Position as CorePosition;
 use cougr_core::event::CollisionEvent;
-use crate::types::{Direction, GhostMode, MAZE_WIDTH, PACMAN_ENTITY_ID};
+use soroban_sdk::{contracttype, symbol_short};
 
 /// Position in the 2D maze grid
 #[contracttype]
