@@ -1,4 +1,3 @@
-
 use crate::CrossAssetRacingLeague;
 use crate::CrossAssetRacingLeagueClient;
 use soroban_sdk::{testutils::Address as _, Address, BytesN, Env};
