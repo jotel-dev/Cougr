@@ -17,34 +17,38 @@ This example implements a complete Pac-Man game as a Soroban smart contract. The
 
 ## Architecture
 
+The example follows a modular architecture, separating domain types, ECS components, game systems, and contract entrypoints.
+
+### Module Layout
+
+- `src/lib.rs`: Main contract entrypoints and orchestration
+- `src/types.rs`: Game enums, state structures, and storage keys
+- `src/components.rs`: ECS-inspired data structures (Position, Ghost)
+- `src/maze.rs`: Maze layout and generation logic
+- `src/systems.rs`: Core game loop and logic
+- `src/test.rs`: Comprehensive test suite
+- `README.md`: This file
+- `Cargo.toml`: Soroban SDK dependencies
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Pac-Man Contract                         │
+│                    Pac-Man Contract (lib.rs)                │
 ├─────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
 │  │  GameState  │  │   Maze      │  │    Ghosts[4]        │  │
-│  │  - score    │  │  - cells[]  │  │  - position         │  │
-│  │  - lives    │  │  - 10x10    │  │  - direction        │  │
-│  │  - game_over│  │             │  │  - mode             │  │
-│  │  - won      │  │             │  │  - frightened_timer │  │
+│  │  (types.rs) │  │  (maze.rs)  │  │  (components.rs)    │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────┘  │
 │                                                             │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │   Pac-Man   │  │  Constants  │  │   Storage Keys      │  │
-│  │  - position │  │  - PELLET=10│  │  - GameState        │  │
-│  │  - direction│  │  - POWER=50 │  │  - Initialized      │  │
-│  │  - start_pos│  │  - GHOST=200│  │                     │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │                    GameSystems (systems.rs)           │  │
+│  │  - move_pacman                                        │  │
+│  │  - move_ghosts                                        │  │
+│  │  - check_collisions                                   │  │
+│  └───────────────────────────────────────────────────────┘  │
 ├─────────────────────────────────────────────────────────────┤
 │                    Contract Functions                       │
 │  ┌──────────────┐ ┌────────────────┐ ┌──────────────────┐  │
 │  │  init_game   │ │change_direction│ │   update_tick    │  │
-│  └──────────────┘ └────────────────┘ └──────────────────┘  │
-│  ┌──────────────┐ ┌────────────────┐ ┌──────────────────┐  │
-│  │  eat_pellet  │ │   get_score    │ │ check_game_over  │  │
-│  └──────────────┘ └────────────────┘ └──────────────────┘  │
-│  ┌──────────────┐ ┌────────────────┐ ┌──────────────────┐  │
-│  │  get_lives   │ │get_pacman_pos  │ │   get_maze       │  │
 │  └──────────────┘ └────────────────┘ └──────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```

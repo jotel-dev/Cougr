@@ -91,6 +91,16 @@ Owner completes the race:
 
 ## Architecture
 
+The example follows a modular architecture, separating data structures, ECS components, business systems, and contract entrypoints.
+
+### Module Layout
+
+- `lib.rs`: Contract entrypoints and orchestration.
+- `types.rs`: Shared domain models, enums, and storage keys.
+- `components.rs`: Cougr ECS component definitions.
+- `systems.rs`: Core gameplay transitions and logic.
+- `helpers.rs`: Validation and verification utilities.
+
 ### Components
 
 | Component | Fields | Purpose |
@@ -103,11 +113,8 @@ Owner completes the race:
 
 ### Systems
 
-- **RaceEntrySystem**: Player registration and race entry
-- **BoostSystem**: Payment-gated boost activation with credit consumption
-- **ProofValidationSystem**: stellar-zk Groth16 proof verification
-- **ResultResolutionSystem**: Race completion and scoring
-- **StandingsSystem**: League standings and progression tracking
+- **RaceSystem**: Handles `create_race`, `enter_race`, `start_race`, `complete_race`, and `submit_race_proof`.
+- **PaymentSystem**: Handles `credit_payment` logic.
 
 ## stellar-zk Integration
 
@@ -332,10 +339,14 @@ Race duration uses ledger sequence numbers, not wall-clock time:
 
 ## Files
 
-- `src/lib.rs`: Main contract implementation
-- `src/test.rs`: Comprehensive test suite
-- `README.md`: This file
-- `Cargo.toml`: Soroban SDK dependencies
+- `src/lib.rs`: Main contract entrypoints and orchestration
+- `src/types.rs`: Data structures, enums, and storage keys
+- `src/components.rs`: ECS components
+- `src/systems.rs`: Core game logic and transitions
+- `src/helpers.rs`: Validation helpers
+- `src/test.rs`: Unit tests
+- `README.md`: Architectural overview and documentation
+- `Cargo.toml`: SDK dependencies
 
 ## Compatibility
 
