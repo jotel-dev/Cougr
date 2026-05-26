@@ -36,6 +36,7 @@ stellar contract build
 | `flappy_bird` | Arcade | Tight tick-loop updates and obstacle generation |
 | `geometry_dash` | Reflex | Deterministic timing and obstacle progression |
 | `guild_arena` | Account patterns | Social recovery and multi-device gameplay |
+| `murdoku` | Puzzle | Ephemeral ECS validation and creator registry |
 | `pac_man` | Maze action | Grid navigation and adversarial movement patterns |
 | `pokemon_mini` | Turn-based battle | Combat sequencing and match state transitions |
 | `pong` | Arcade | Minimal competitive loop and ECS fundamentals |
