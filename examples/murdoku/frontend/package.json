@@ -17,9 +17,9 @@
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.15.1",
     "tailwindcss": "^4.3.0",
-    "@pollar/react": "^0.1.0",
-    "@pollar/core": "^0.1.0",
-    "soroban-client": "^0.1.0"
+    "@pollar/react": "^0.7.1",
+    "@pollar/core": "^0.7.1",
+    "soroban-client": "^1.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
