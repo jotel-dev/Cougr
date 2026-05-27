@@ -10,7 +10,6 @@ function App() {
   const [wallet, setWallet] = useState<WalletState>({ connected: false, address: null });
 
   function handleConnect() {
-    // Simulates Pollar wallet connection for local dev
     setWallet({ connected: true, address: 'GBETG3K7QW4XNZPFVMMJJ5ZRQG2YDKN' });
   }
 
@@ -28,7 +27,10 @@ function App() {
 
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/play/:puzzleId" element={<PlayPage />} />
+        <Route
+          path="/play/:puzzleId"
+          element={<PlayPage walletConnected={wallet.connected} />}
+        />
         <Route path="/create" element={<CreatePage />} />
         <Route path="*" element={
           <main id="main-content" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', textAlign: 'center' }}>

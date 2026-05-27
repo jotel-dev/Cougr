@@ -1,13 +1,30 @@
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Plus } from 'lucide-react';
+import { BookOpen, Plus, Loader2, Inbox } from 'lucide-react';
 import { PuzzleCard } from '../components/PuzzleCard';
-import { MOCK_SUMMARIES } from '../data/mockData';
+import { usePuzzleList } from '../hooks/useMurdoku';
+import type { PuzzleSummary, PuzzleSummaryWithSolvers } from '../types';
+
+function mapToPuzzleSummary(p: PuzzleSummaryWithSolvers): PuzzleSummary & { totalSolvers: number } {
+  return {
+    id: p.id,
+    title: p.title,
+    gridSize: p.gridSize,
+    difficulty: p.difficulty,
+    clueCount: 0,
+    creatorAddress: p.creatorAddress,
+    totalSolvers: p.totalSolvers,
+  };
+}
 
 export function HomePage() {
   const navigate = useNavigate();
+  const { puzzles, loading, error, hasMore, loadMore } = usePuzzleList(6);
 
   return (
-    <main id="main-content" style={{ flex: 1, padding: '2rem 1.25rem', maxWidth: 1280, margin: '0 auto', width: '100%' }}>
+    <main
+      id="main-content"
+      style={{ flex: 1, padding: '2rem 1.25rem', maxWidth: 1280, margin: '0 auto', width: '100%' }}
+    >
       {/* Hero */}
       <section
         aria-labelledby="hero-heading"
@@ -29,7 +46,7 @@ export function HomePage() {
             marginBottom: '0.75rem',
           }}
         >
-          ✦ On-Chain Murder Mystery ✦
+          On-Chain Murder Mystery
         </div>
 
         <h1
@@ -96,36 +113,156 @@ export function HomePage() {
           <BookOpen size={18} style={{ color: 'var(--accent-gold)' }} aria-hidden="true" />
           Open Cases
         </h2>
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '0.75rem',
-            color: 'var(--noir-muted)',
-          }}
-        >
-          {MOCK_SUMMARIES.length} available
-        </span>
+        {!loading && puzzles.length > 0 && (
+          <span
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '0.75rem',
+              color: 'var(--noir-muted)',
+            }}
+          >
+            {puzzles.length} available
+          </span>
+        )}
       </div>
 
+      {/* Loading state */}
+      {loading && puzzles.length === 0 && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '4rem 2rem',
+            gap: '1rem',
+          }}
+        >
+          <Loader2 size={32} style={{ color: 'var(--accent-gold)' }} className="animate-spin" />
+          <p
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '0.875rem',
+              color: 'var(--noir-muted)',
+            }}
+          >
+            Retrieving case files...
+          </p>
+        </div>
+      )}
+
+      {/* Error state */}
+      {error && (
+        <div
+          style={{
+            textAlign: 'center',
+            padding: '3rem 1rem',
+            color: 'var(--accent-red)',
+          }}
+        >
+          <p style={{ fontFamily: 'var(--font-serif)', fontSize: '1.125rem', marginBottom: '0.5rem' }}>
+            Unable to load cases
+          </p>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem', color: 'var(--noir-muted)' }}>
+            {error}
+          </p>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && !error && puzzles.length === 0 && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '4rem 2rem',
+            gap: '1rem',
+          }}
+        >
+          <Inbox size={40} style={{ color: 'var(--noir-muted)' }} />
+          <p
+            style={{
+              fontFamily: 'var(--font-serif)',
+              fontStyle: 'italic',
+              fontSize: '1.125rem',
+              color: 'var(--noir-muted)',
+            }}
+          >
+            No open cases yet. Be the first to file one.
+          </p>
+          <button
+            className="btn-gold"
+            onClick={() => navigate('/create')}
+          >
+            <Plus size={14} aria-hidden="true" />
+            Create a Case
+          </button>
+        </div>
+      )}
+
       {/* Puzzle grid */}
-      <div
-        role="list"
-        aria-label="Available puzzles"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: '1rem',
-        }}
-      >
-        {MOCK_SUMMARIES.map((puzzle) => (
-          <div key={puzzle.id} role="listitem">
-            <PuzzleCard
-              puzzle={puzzle}
-              onClick={(id) => navigate(`/play/${id}`)}
-            />
+      {puzzles.length > 0 && (
+        <>
+          <div
+            role="list"
+            aria-label="Available puzzles"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '1rem',
+            }}
+          >
+            {puzzles.map((puzzle) => {
+              const mapped = mapToPuzzleSummary(puzzle);
+              return (
+                <div key={puzzle.id} role="listitem">
+                  <PuzzleCard
+                    puzzle={mapped}
+                    totalSolvers={mapped.totalSolvers}
+                    onClick={(id) => navigate(`/play/${id}`)}
+                  />
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
+
+          {/* Load more */}
+          {hasMore && (
+            <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+              <button
+                id="btn-load-more"
+                className="btn-outline"
+                onClick={loadMore}
+                disabled={loading}
+                style={{
+                  opacity: loading ? 0.6 : 1,
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                    Loading...
+                  </>
+                ) : (
+                  'Load More Cases'
+                )}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        .animate-spin {
+          animation: spin 1s linear infinite;
+        }
+      `}</style>
     </main>
   );
 }
