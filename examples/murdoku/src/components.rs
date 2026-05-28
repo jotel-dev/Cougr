@@ -1,37 +1,44 @@
-//! Murdoku ECS components using cougr-core's ComponentTrait.
-//!
-//! Components that contain only fixed-size primitives use `cougr_core::impl_component!`.
-//! Components with complex fields (Vec, nested #[contracttype]) implement
-//! `ComponentTrait` manually via Soroban XDR serialization, following the same
-//! pattern used in the canonical `snake` example.
+//! Murdoku game components using cougr-core's ComponentTrait
 
-use crate::types::{Clue, PuzzleMetadata, Suspect};
 use cougr_core::component::{ComponentStorage, ComponentTrait};
-use soroban_sdk::{contracttype, symbol_short, Bytes, Env, Symbol, Vec};
+use soroban_sdk::xdr::{FromXdr, ToXdr};
+use soroban_sdk::{contracttype, symbol_short, Bytes, Env, String, Symbol, Vec};
 
-// ─── GridComponent ─────────────────────────────────────────────────────────
-
-/// Flat NxN grid (row-major). Value = suspect index (0 = empty).
+/// A single pre-filled cell clue in the puzzle grid.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct GridComponent {
-    pub grid_size: u32,
-    pub cells: Vec<u32>,
+pub struct Clue {
+    pub row: u32,
+    pub col: u32,
+    pub suspect_idx: u32,
 }
 
-impl ComponentTrait for GridComponent {
+/// Metadata associated with a Murdoku puzzle.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PuzzleMetadata {
+    pub name: String,
+    pub difficulty: String,
+}
+
+/// Grid size component representing the grid's side length.
+#[derive(Clone, Debug, PartialEq)]
+pub struct GridSize {
+    pub size: u32,
+}
+
+impl ComponentTrait for GridSize {
     fn component_type() -> Symbol {
-        symbol_short!("grid")
+        symbol_short!("gridsize")
     }
 
     fn serialize(&self, env: &Env) -> Bytes {
-        use soroban_sdk::xdr::ToXdr;
-        self.to_xdr(env)
+        self.size.to_xdr(env)
     }
 
     fn deserialize(env: &Env, data: &Bytes) -> Option<Self> {
-        use soroban_sdk::xdr::FromXdr;
-        Self::from_xdr(env, data).ok()
+        let size = u32::from_xdr(env, data).ok()?;
+        Some(Self { size })
     }
 
     fn default_storage() -> ComponentStorage {
@@ -39,28 +46,24 @@ impl ComponentTrait for GridComponent {
     }
 }
 
-// ─── SuspectListComponent ──────────────────────────────────────────────────
-
-/// Ordered list of suspects for a puzzle. Index position = suspect ID.
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SuspectListComponent {
-    pub suspects: Vec<Suspect>,
+/// Suspects component storing the list of names.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Suspects {
+    pub list: Vec<String>,
 }
 
-impl ComponentTrait for SuspectListComponent {
+impl ComponentTrait for Suspects {
     fn component_type() -> Symbol {
         symbol_short!("suspects")
     }
 
     fn serialize(&self, env: &Env) -> Bytes {
-        use soroban_sdk::xdr::ToXdr;
-        self.to_xdr(env)
+        self.list.clone().to_xdr(env)
     }
 
     fn deserialize(env: &Env, data: &Bytes) -> Option<Self> {
-        use soroban_sdk::xdr::FromXdr;
-        Self::from_xdr(env, data).ok()
+        let list = soroban_sdk::Vec::<String>::from_xdr(env, data).ok()?;
+        Some(Self { list })
     }
 
     fn default_storage() -> ComponentStorage {
@@ -68,28 +71,24 @@ impl ComponentTrait for SuspectListComponent {
     }
 }
 
-// ─── ClueListComponent ─────────────────────────────────────────────────────
-
-/// All clues associated with a puzzle.
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ClueListComponent {
-    pub clues: Vec<Clue>,
+/// Clues component storing the list of pre-filled cells.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Clues {
+    pub list: Vec<Clue>,
 }
 
-impl ComponentTrait for ClueListComponent {
+impl ComponentTrait for Clues {
     fn component_type() -> Symbol {
         symbol_short!("clues")
     }
 
     fn serialize(&self, env: &Env) -> Bytes {
-        use soroban_sdk::xdr::ToXdr;
-        self.to_xdr(env)
+        self.list.clone().to_xdr(env)
     }
 
     fn deserialize(env: &Env, data: &Bytes) -> Option<Self> {
-        use soroban_sdk::xdr::FromXdr;
-        Self::from_xdr(env, data).ok()
+        let list = soroban_sdk::Vec::<Clue>::from_xdr(env, data).ok()?;
+        Some(Self { list })
     }
 
     fn default_storage() -> ComponentStorage {
@@ -97,28 +96,24 @@ impl ComponentTrait for ClueListComponent {
     }
 }
 
-// ─── SolutionComponent ─────────────────────────────────────────────────────
-
-/// Correct suspect arrangement (row-major, same indexing as GridComponent).
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SolutionComponent {
-    pub cells: Vec<u32>,
+/// Solution component storing the full flat Latin square solution.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Solution {
+    pub grid: Vec<u32>,
 }
 
-impl ComponentTrait for SolutionComponent {
+impl ComponentTrait for Solution {
     fn component_type() -> Symbol {
         symbol_short!("solution")
     }
 
     fn serialize(&self, env: &Env) -> Bytes {
-        use soroban_sdk::xdr::ToXdr;
-        self.to_xdr(env)
+        self.grid.clone().to_xdr(env)
     }
 
     fn deserialize(env: &Env, data: &Bytes) -> Option<Self> {
-        use soroban_sdk::xdr::FromXdr;
-        Self::from_xdr(env, data).ok()
+        let grid = soroban_sdk::Vec::<u32>::from_xdr(env, data).ok()?;
+        Some(Self { grid })
     }
 
     fn default_storage() -> ComponentStorage {
@@ -126,28 +121,24 @@ impl ComponentTrait for SolutionComponent {
     }
 }
 
-// ─── PuzzleMetaComponent ───────────────────────────────────────────────────
-
-/// Authorship, difficulty, name, grid size.
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct PuzzleMetaComponent {
-    pub metadata: PuzzleMetadata,
+/// Metadata component storing description/name.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Metadata {
+    pub meta: PuzzleMetadata,
 }
 
-impl ComponentTrait for PuzzleMetaComponent {
+impl ComponentTrait for Metadata {
     fn component_type() -> Symbol {
-        symbol_short!("meta")
+        symbol_short!("metadata")
     }
 
     fn serialize(&self, env: &Env) -> Bytes {
-        use soroban_sdk::xdr::ToXdr;
-        self.to_xdr(env)
+        self.meta.clone().to_xdr(env)
     }
 
     fn deserialize(env: &Env, data: &Bytes) -> Option<Self> {
-        use soroban_sdk::xdr::FromXdr;
-        Self::from_xdr(env, data).ok()
+        let meta = PuzzleMetadata::from_xdr(env, data).ok()?;
+        Some(Self { meta })
     }
 
     fn default_storage() -> ComponentStorage {
@@ -155,47 +146,29 @@ impl ComponentTrait for PuzzleMetaComponent {
     }
 }
 
-// ─── PlayerProgressComponent ───────────────────────────────────────────────
-
-/// Per-player current state. Mirrors GridComponent layout.
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct PlayerProgressComponent {
-    pub cells: Vec<u32>,
-    pub move_count: u32,
-    pub solved: bool,
+/// Solution commitment component storing the Poseidon2 hash (ZK mode).
+#[cfg(feature = "zk")]
+#[derive(Clone, Debug, PartialEq)]
+pub struct SolutionCommitment {
+    pub commitment: soroban_sdk::BytesN<32>,
 }
 
-impl ComponentTrait for PlayerProgressComponent {
+#[cfg(feature = "zk")]
+impl ComponentTrait for SolutionCommitment {
     fn component_type() -> Symbol {
-        symbol_short!("progress")
+        symbol_short!("solcommit")
     }
 
     fn serialize(&self, env: &Env) -> Bytes {
-        use soroban_sdk::xdr::ToXdr;
-        self.to_xdr(env)
+        self.commitment.clone().to_xdr(env)
     }
 
     fn deserialize(env: &Env, data: &Bytes) -> Option<Self> {
-        use soroban_sdk::xdr::FromXdr;
-        Self::from_xdr(env, data).ok()
+        let commitment = soroban_sdk::BytesN::<32>::from_xdr(env, data).ok()?;
+        Some(Self { commitment })
     }
 
     fn default_storage() -> ComponentStorage {
         ComponentStorage::Table
     }
 }
-
-// ─── PuzzleStatusComponent ─────────────────────────────────────────────────
-
-/// Registry-level tracking.
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct PuzzleStatusComponent {
-    pub active: bool,
-    pub total_solvers: u32,
-}
-
-// PuzzleStatusComponent uses `impl_component!` because it contains only
-// fixed-size primitives supported by the macro (bool + u32 = 5 bytes).
-cougr_core::impl_component!(PuzzleStatusComponent, "status", Table, { active: bool, total_solvers: u32 });

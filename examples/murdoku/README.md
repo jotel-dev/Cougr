@@ -1,6 +1,6 @@
 # Murdoku
 
-Murdoku is a murder mystery logic puzzle built with the [Cougr](../../README.md) ECS framework on Stellar Soroban. It demonstrates how to combine Entity Component System (ECS) game state, Pollar social logins, and session key authorization for smooth, gasless player interaction.
+Murdoku is a murder mystery logic puzzle built with the [Cougr](../../README.md) ECS framework on Stellar Soroban. It demonstrates how to combine Entity Component System (ECS) game state, Pollar social logins, session key authorization, and zero-knowledge proof verification for privacy-preserving puzzle solving.
 
 ## Purpose and Pattern
 
@@ -9,7 +9,11 @@ Murdoku is an on-chain logic puzzle that combines Sudoku-style Latin square cons
 This example showcases the canonical reference architecture for a full-stack game within the Cougr ecosystem:
 * **Entity Component System (ECS)**: Separation of game state, input validation, puzzle constraint checks, and win conditions using the Cougr ECS engine.
 * **Social Authentication & Session Keys**: Account abstraction utilizing Pollar for embedded wallet logins and scoped session key creation (`SessionBuilder`) to support non-intrusive gameplay transactions.
-* **ZK Readiness**: Architectural scaffolding for Zero-Knowledge (ZK) enhancements. In the v1 release, solutions and clue validations are stored in plaintext. In the subsequent v2 enhancement (tracked separately), the grid is submitted as a cryptographic commitment, and moves are verified using Groth16 zk-SNARK proofs generated client-side to prevent front-running and keep solutions private.
+* **ZK Privacy Layer**: The solution is never stored in plaintext on-chain. Instead, puzzle creators submit a cryptographic commitment (Poseidon2 hash of the solution + salt) and a Groth16 verifier key. Players prove they know a valid solution by submitting a Groth16 zero-knowledge proof, without revealing the solution itself.
+
+The contract supports two build modes controlled by the `zk` Cargo feature:
+- **Default (v1)**: Plaintext solution stored on-chain. Simpler but exposes the solution to on-chain observers.
+- **`zk` feature enabled**: Solution commitment + Groth16 proof verification. The solution remains private; the contract only stores a hash and validates ZK proofs.
 
 ---
 
@@ -40,19 +44,18 @@ The React frontend embeds the Pollar SDK for OAuth/social logins. Pollar creates
 
 ## Public Contract API
 
-Below is the entrypoint surface defined in the `#[contractimpl]` block of the Murdoku smart contract.
+Below is the entrypoint surface defined in the `#[contractimpl]` block of the Murdoku smart contract. Some entrypoints are only available with the `zk` feature enabled.
 
 | Function | Parameters | Return Type | Description |
 |---|---|---|---|
 | `init_game` | `env: Env`, `admin: Address` | `()` | Initializes the contract state and registers the game administrator. |
-| `submit_puzzle` | `env: Env`, `creator: Address`, `size: u32`, `solution: Vec<u32>`, `clues: Vec<Clue>` | `BytesN<32>` | Registers a new puzzle in the catalog. Validates that the solution is a valid Latin square of the specified size and that the clues are consistent. Returns the unique puzzle ID. |
-| `list_puzzles` | `env: Env` | `Vec<PuzzleSummary>` | Returns a list of summaries of all registered puzzles in the catalog. |
-| `get_puzzle` | `env: Env`, `id: BytesN<32>` | `Puzzle` | Retrieves the grid configuration and clues for a specific puzzle ID. Excludes the solution. |
-| `start_game` | `env: Env`, `player: Address`, `puzzle_id: BytesN<32>` | `()` | Spawns a new active game session for the player. Triggers the initialization systems. |
-| `place_suspect` | `env: Env`, `session_key: Address`, `row: u32`, `col: u32`, `suspect_id: u32` | `()` | Places a suspect at the specified cell coordinates. Validates constraints and evaluates if the puzzle has been solved. Authenticated via session key. |
-| `is_solved` | `env: Env`, `player: Address` | `bool` | Returns `true` if the player's active puzzle has been successfully solved. |
-| `register_passkey` | `env: Env`, `player: Address`, `pubkey: BytesN<65>` | `()` | Registers a secp256r1 public key (e.g. passkey) for the player. |
-| `authenticate_and_create_session` | `env: Env`, `player: Address`, `signature: Bytes`, `challenge: BytesN<32>`, `duration: u64` | `Address` | Verifies a passkey signature and returns a scoped session key address. |
+| `submit_puzzle` (v1) | `env: Env`, `creator: Address`, `size: u32`, `solution: Vec<u32>`, `clues: Vec<Clue>` | `u32` | Registers a new puzzle in the catalog with plaintext solution. Validates Latin square constraints. |
+| `submit_puzzle` (ZK) | `env: Env`, `creator: Address`, `grid_size: u32`, `suspects: Vec<String>`, `clues: Vec<Clue>`, `solution_commitment: BytesN<32>`, `verifier_key: Bytes`, `metadata: PuzzleMetadata` | `u32` | Registers a new puzzle with a solution commitment and Groth16 verifier key. No plaintext solution is stored. |
+| `list_puzzles` | `env: Env`, `offset: u32`, `limit: u32` | `Vec<PuzzleSummary>` | Returns a paginated list of summaries of all registered puzzles. |
+| `get_puzzle` | `env: Env`, `puzzle_id: u32` | `Puzzle` | Retrieves puzzle details. In ZK mode, returns the solution commitment (not the plaintext solution). |
+| `deactivate_puzzle` | `env: Env`, `caller: Address`, `puzzle_id: u32` | `()` | Deactivates a puzzle. Only the creator can deactivate. |
+| `submit_proof` (ZK) | `env: Env`, `player: Address`, `puzzle_id: u32`, `proof: Bytes`, `public_inputs: Vec<BytesN<32>>` | `()` | Submits a Groth16 proof of a valid solution. Marks the puzzle as solved for the player on success. |
+| `is_solved` (ZK) | `env: Env`, `puzzle_id: u32`, `player: Address` | `bool` | Returns `true` if the player has submitted a valid proof for the puzzle. |
 
 ---
 
@@ -61,10 +64,18 @@ Below is the entrypoint surface defined in the `#[contractimpl]` block of the Mu
 Murdoku uses Soroban's state storage model (Instance, Persistent, and Temporary) to optimize gas costs and storage lifetimes.
 
 | Storage Type | Data Kept | Lifetime | Rationale |
-|---|---|---|---|
-| **Persistent** | Registered Puzzle catalog (by ID), Creator profiles, Passkey credentials | Indefinite | Puzzle templates and user credentials must persist forever across sessions and are read-heavy. |
+|---|---|---|---|---|
+| **Persistent** | Registered Puzzle catalog (by ID), Creator profiles, Passkey credentials, Verifier keys (ZK), Solver state (ZK) | Indefinite | Puzzle templates and user credentials must persist forever across sessions and are read-heavy. |
 | **Instance** | Active Player Game session, ECS World state (`SimpleWorld`), Admin configs | Extended (Renewed on play) | The active board state must persist during active play but can be garbage-collected or archived if the player abandons the game. |
 | **Temporary** | Active Session Key tokens, cryptographic challenges | Short-term (Expires in blocks) | Session authorization keys only need to last for the duration of the play session and should expire automatically to free state space. |
+
+In ZK mode, the following additional storage keys are used:
+
+| Key Pattern | Type | Description |
+|---|---|---|
+| `(Symbol("VKEY"), puzzle_id)` | `Bytes` | XDR-serialized Groth16 `VerificationKey` |
+| `(Symbol("SOLVED"), puzzle_id, player)` | `bool` | Whether a player has solved this puzzle |
+| `(Symbol("SOLVER_CNT"), puzzle_id)` | `u32` | Number of unique solvers for this puzzle |
 
 ---
 
@@ -87,11 +98,12 @@ Murdoku uses Soroban's state storage model (Instance, Persistent, and Temporary)
    - Selects grid size (4x4 or 5x5).
    - Enters the full solution grid.
    - Defines the clues (e.g., cell constraints, adjacency rules).
-3. **Submit Puzzle**: The creator clicks "Publish", triggering a call to `submit_puzzle`.
-4. **Contract Invariant Check**: The contract validates:
-   - The solution grid constitutes a mathematically valid Latin square.
-   - The provided clues do not conflict with the solution.
-5. **Publishing**: If checks pass, the contract generates a unique puzzle ID (SHA-256 hash of solution and clues), stores the puzzle templates in persistent storage, and adds it to the list of active games.
+3. **Submit Puzzle** (v1): The creator clicks "Publish", triggering a call to `submit_puzzle` with the plaintext solution.
+4. **Submit Puzzle** (ZK): The creator generates a Poseidon2 commitment of the solution and a Groth16 verifier key, then calls `submit_puzzle` with the commitment and key instead of the plaintext.
+5. **Contract Validation**:
+   - **v1 mode**: The contract validates the Latin square constraints and clue consistency via ECS systems.
+   - **ZK mode**: The contract validates puzzle structure (grid size, suspects, clue bounds) but cannot verify solution correctness — the ZK proof catches cheating at solve time.
+6. **Publishing**: If checks pass, the contract assigns a puzzle ID, stores the puzzle in persistent storage, and activates it.
 
 ---
 
@@ -151,7 +163,14 @@ cd examples/murdoku
 cargo fmt --check
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test
+cargo test --features zk   # run ZK-specific tests
 stellar contract build
+```
+
+To build with the ZK privacy layer enabled:
+```bash
+cargo build --features zk
+cargo test --features zk
 ```
 
 ---
@@ -196,13 +215,59 @@ stellar contract invoke \
 
 ---
 
-## Known Limitations
+## ZK Privacy Layer
 
-* **Plaintext Solutions**: In the v1 release, solutions and clue validations are stored in plaintext on-chain. ZK commit-reveal is tracked as a separate v2 enhancement.
-* **Grid Sizes**: Grid sizes are constrained to 4x4 and 5x5 to maintain low transaction complexity and stay within Soroban CPU/memory limits.
-* **Immutable Puzzles**: Puzzles cannot be edited or deleted once submitted to prevent breaking active player games.
-* **No Client Proof Generation**: ZK mode does not generate proofs in the client during play in v1.
-* **Development Circuit Setup**: The trusted setup used for ZK verification circuits in development is not production-safe and must be regenerated with a ceremony before launch.
+### Circuit Statement
+
+The Groth16 circuit proves the following statement without revealing the solution:
+
+> "I know a set of values `cells` such that:
+>   (1) `cells` is a valid Latin square of size N,
+>   (2) Poseidon2(cells || salt) == commitment,
+>   (3) each cell value is in range 1..=N."
+
+### Public Inputs Format
+
+| Index | Type | Description |
+|-------|------|-------------|
+| 0 | `BytesN<32>` | Solution commitment (Poseidon2 hash of solution + salt) |
+| 1..N | `BytesN<32>` | Additional public inputs (e.g., grid size, clue hashes) |
+
+### Player Solve Flow (ZK mode)
+
+1. **Browse Puzzles**: Frontend calls `list_puzzles` and `get_puzzle` to fetch puzzle metadata (grid size, suspects, clues, solution **commitment** — not the plaintext solution).
+2. **Solve Off-Chain**: The player solves the puzzle manually, arriving at a candidate grid arrangement.
+3. **Generate Proof**: The frontend (or a backend prover service) generates a Groth16 proof that the player knows a valid arrangement consistent with the commitment.
+4. **Submit Proof**: The player calls `submit_proof(player, puzzle_id, proof, public_inputs)`. The contract verifies the Groth16 proof against the stored verifier key.
+5. **Mark Solved**: On valid proof, the contract marks the puzzle as solved for that player and increments the solver count.
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/zk.rs` | Groth16 proof verification logic, verifier key storage, solver state tracking |
+| `src/components.rs` | `SolutionCommitment` ECS component (ZK mode only) |
+| `src/lib.rs` | Feature-gated `Puzzle` struct, `submit_proof` entrypoint, `is_solved` query |
+
+### Backward Compatibility
+
+The v1 plaintext solution path is preserved behind the default (no `zk` feature) build. To switch between modes:
+
+```bash
+# v1 mode (default)
+cargo build
+cargo test
+
+# ZK mode
+cargo build --features zk
+cargo test --features zk
+```
+
+### Known Constraints
+
+- **Trusted Setup**: Groth16 requires a trusted setup ceremony for each circuit. The development verifier keys used in this implementation are **not production-safe**. A proper multi-party ceremony must be completed before mainnet deployment. See the module-level docs in `src/zk.rs` for details.
+- **Client-Side Proof Generation**: Generating Groth16 proofs in the browser requires a WASM-compiled prover. This is tracked as a separate enhancement and is not yet implemented in the frontend.
+- **Circuit Size**: A 5×5 Murdoku circuit has 25 cells. Each cell requires range checks (1..=N) and Latin square row/column uniqueness constraints. The constraint count should be verified against Stellar's Groth16 verification limits before production use.
 
 ---
 
