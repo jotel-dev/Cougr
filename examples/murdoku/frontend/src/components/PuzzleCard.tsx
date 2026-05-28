@@ -1,8 +1,9 @@
-import { Grid2x2, User } from 'lucide-react';
+import { Grid2x2, User, Trophy } from 'lucide-react';
 import type { PuzzleSummary, Difficulty } from '../types';
 
 interface PuzzleCardProps {
   puzzle: PuzzleSummary;
+  totalSolvers?: number;
   onClick: (id: string) => void;
 }
 
@@ -17,7 +18,7 @@ function shortenAddress(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
-export function PuzzleCard({ puzzle, onClick }: PuzzleCardProps) {
+export function PuzzleCard({ puzzle, totalSolvers, onClick }: PuzzleCardProps) {
   const diff = DIFFICULTY_STYLES[puzzle.difficulty];
 
   return (
@@ -54,7 +55,6 @@ export function PuzzleCard({ puzzle, onClick }: PuzzleCardProps) {
           aria-label={`Difficulty: ${puzzle.difficulty}`}
           style={{ color: diff.color, background: 'transparent', fontWeight: 600 }}
         >
-          {/* Icon-only indicator for accessibility pairing */}
           <span
             aria-hidden="true"
             style={{
@@ -79,7 +79,7 @@ export function PuzzleCard({ puzzle, onClick }: PuzzleCardProps) {
         {puzzle.title}
       </h2>
 
-      {/* Footer: clue count + creator */}
+      {/* Footer: clue count + solvers + creator */}
       <div
         style={{
           display: 'flex',
@@ -93,6 +93,12 @@ export function PuzzleCard({ puzzle, onClick }: PuzzleCardProps) {
         }}
       >
         <span>{puzzle.clueCount} clues</span>
+        {totalSolvers !== undefined && (
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <Trophy size={10} aria-hidden="true" style={{ color: 'var(--accent-gold)' }} />
+            {totalSolvers}
+          </span>
+        )}
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
           <User size={11} aria-hidden="true" />
           {shortenAddress(puzzle.creatorAddress)}

@@ -1,7 +1,8 @@
 //! Murdoku game components using cougr-core's ComponentTrait
 
 use cougr_core::component::{ComponentStorage, ComponentTrait};
-use soroban_sdk::{contracttype, symbol_short, Bytes, Env, Symbol, Vec, String};
+use soroban_sdk::xdr::{FromXdr, ToXdr};
+use soroban_sdk::{contracttype, symbol_short, Bytes, Env, String, Symbol, Vec};
 
 /// A single pre-filled cell clue in the puzzle grid.
 #[contracttype]
@@ -32,11 +33,11 @@ impl ComponentTrait for GridSize {
     }
 
     fn serialize(&self, env: &Env) -> Bytes {
-        env.to_xdr(&self.size)
+        self.size.to_xdr(env)
     }
 
     fn deserialize(env: &Env, data: &Bytes) -> Option<Self> {
-        let size = env.from_xdr(data).ok()?;
+        let size = u32::from_xdr(env, data).ok()?;
         Some(Self { size })
     }
 
@@ -57,11 +58,11 @@ impl ComponentTrait for Suspects {
     }
 
     fn serialize(&self, env: &Env) -> Bytes {
-        env.to_xdr(&self.list)
+        self.list.clone().to_xdr(env)
     }
 
     fn deserialize(env: &Env, data: &Bytes) -> Option<Self> {
-        let list = env.from_xdr(data).ok()?;
+        let list = soroban_sdk::Vec::<String>::from_xdr(env, data).ok()?;
         Some(Self { list })
     }
 
@@ -82,11 +83,11 @@ impl ComponentTrait for Clues {
     }
 
     fn serialize(&self, env: &Env) -> Bytes {
-        env.to_xdr(&self.list)
+        self.list.clone().to_xdr(env)
     }
 
     fn deserialize(env: &Env, data: &Bytes) -> Option<Self> {
-        let list = env.from_xdr(data).ok()?;
+        let list = soroban_sdk::Vec::<Clue>::from_xdr(env, data).ok()?;
         Some(Self { list })
     }
 
@@ -107,11 +108,11 @@ impl ComponentTrait for Solution {
     }
 
     fn serialize(&self, env: &Env) -> Bytes {
-        env.to_xdr(&self.grid)
+        self.grid.clone().to_xdr(env)
     }
 
     fn deserialize(env: &Env, data: &Bytes) -> Option<Self> {
-        let grid = env.from_xdr(data).ok()?;
+        let grid = soroban_sdk::Vec::<u32>::from_xdr(env, data).ok()?;
         Some(Self { grid })
     }
 
@@ -132,12 +133,39 @@ impl ComponentTrait for Metadata {
     }
 
     fn serialize(&self, env: &Env) -> Bytes {
-        env.to_xdr(&self.meta)
+        self.meta.clone().to_xdr(env)
     }
 
     fn deserialize(env: &Env, data: &Bytes) -> Option<Self> {
-        let meta = env.from_xdr(data).ok()?;
+        let meta = PuzzleMetadata::from_xdr(env, data).ok()?;
         Some(Self { meta })
+    }
+
+    fn default_storage() -> ComponentStorage {
+        ComponentStorage::Table
+    }
+}
+
+/// Solution commitment component storing the Poseidon2 hash (ZK mode).
+#[cfg(feature = "zk")]
+#[derive(Clone, Debug, PartialEq)]
+pub struct SolutionCommitment {
+    pub commitment: soroban_sdk::BytesN<32>,
+}
+
+#[cfg(feature = "zk")]
+impl ComponentTrait for SolutionCommitment {
+    fn component_type() -> Symbol {
+        symbol_short!("solcommit")
+    }
+
+    fn serialize(&self, env: &Env) -> Bytes {
+        self.commitment.clone().to_xdr(env)
+    }
+
+    fn deserialize(env: &Env, data: &Bytes) -> Option<Self> {
+        let commitment = soroban_sdk::BytesN::<32>::from_xdr(env, data).ok()?;
+        Some(Self { commitment })
     }
 
     fn default_storage() -> ComponentStorage {

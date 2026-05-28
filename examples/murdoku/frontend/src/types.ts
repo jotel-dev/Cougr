@@ -88,3 +88,70 @@ export interface WalletState {
   connected: boolean;
   address: string | null;
 }
+
+export type MoveResult =
+  | 'Ok'
+  | 'RowConflict'
+  | 'ColConflict'
+  | 'CellOccupied'
+  | 'GameAlreadySolved'
+  | 'InvalidCoordinates';
+
+export interface ContractCell {
+  suspectId: number | null;
+}
+
+export interface PlayerState {
+  cells: ContractCell[];
+  moveCount: number;
+  solved: boolean;
+}
+
+export interface ContractError {
+  message: string;
+  code?: number;
+}
+
+export interface PuzzleSummaryWithSolvers {
+  id: string;
+  title: string;
+  gridSize: 4 | 5;
+  difficulty: Difficulty;
+  totalSolvers: number;
+  active: boolean;
+  creatorAddress: string;
+}
+
+export interface PuzzleListResult {
+  puzzles: PuzzleSummaryWithSolvers[];
+  totalCount: number;
+  hasMore: boolean;
+}
+
+export interface ContractPuzzleClue {
+  id: string;
+  type: ClueType;
+  suspectAId: number;
+  suspectBId: number;
+  description: string;
+}
+
+export interface ContractPuzzle {
+  id: string;
+  title: string;
+  description: string;
+  gridSize: 4 | 5;
+  difficulty: Difficulty;
+  suspects: Suspect[];
+  clues: ContractPuzzleClue[];
+  solution: number[];
+  creatorAddress: string;
+  active: boolean;
+}
+
+export interface UseMutationResult<T> {
+  mutate: (...args: any[]) => Promise<T>;
+  loading: boolean;
+  error: string | null;
+  data: T | null;
+}
