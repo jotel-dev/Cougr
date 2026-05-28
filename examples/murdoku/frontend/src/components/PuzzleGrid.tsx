@@ -1,8 +1,16 @@
-import type { GameState, Suspect } from '../types';
+import type { Suspect, Cell } from '../types';
+
+interface CellLoadingState {
+  [key: number]: boolean;
+}
 
 interface PuzzleGridProps {
-  gameState: GameState;
+  cells: Cell[];
+  gridSize: 4 | 5;
+  suspects: Suspect[];
+  isSolved: boolean;
   onCellClick: (index: number) => void;
+  loadingCells?: CellLoadingState;
 }
 
 function getSuspectById(suspects: Suspect[], id: number | null): Suspect | undefined {
@@ -17,8 +25,29 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-export function PuzzleGrid({ gameState, onCellClick }: PuzzleGridProps) {
-  const { board, gridSize, suspects, isSolved } = gameState;
+function checkConflicts(board: Cell[], size: number): Set<number> {
+  const conflicts = new Set<number>();
+  for (let i = 0; i < board.length; i++) {
+    if (board[i].suspectId === null) continue;
+    const val = board[i].suspectId;
+    const row = Math.floor(i / size);
+    const col = i % size;
+    let hasConflict = false;
+    for (let c = 0; c < size && !hasConflict; c++) {
+      const j = row * size + c;
+      if (j !== i && board[j].suspectId === val) hasConflict = true;
+    }
+    for (let r = 0; r < size && !hasConflict; r++) {
+      const j = r * size + col;
+      if (j !== i && board[j].suspectId === val) hasConflict = true;
+    }
+    if (hasConflict) conflicts.add(i);
+  }
+  return conflicts;
+}
+
+export function PuzzleGrid({ cells, gridSize, suspects, isSolved, onCellClick, loadingCells = {} }: PuzzleGridProps) {
+  const conflicts = isSolved ? new Set<number>() : checkConflicts(cells, gridSize);
 
   return (
     <div
@@ -39,15 +68,16 @@ export function PuzzleGrid({ gameState, onCellClick }: PuzzleGridProps) {
       }}
     >
       <p id="grid-instructions" className="sr-only">
-        Select a suspect from the suspect bar, then click a cell to place them. Conflicting cells are highlighted in red.
+        Select a suspect from the suspect bar, then click a cell to place them. Click an occupied cell to remove the suspect. Conflicting cells are highlighted in red.
       </p>
 
-      {board.map((cell, idx) => {
+      {cells.map((cell, idx) => {
         const row = Math.floor(idx / gridSize);
         const col = idx % gridSize;
         const suspect = getSuspectById(suspects, cell.suspectId);
-        const isConflict = cell.status === 'conflict';
-        const isEmpty = cell.status === 'empty';
+        const isConflict = conflicts.has(idx);
+        const isEmpty = cell.suspectId === null;
+        const isLoading = loadingCells[idx] === true;
 
         let bgColor = 'var(--noir-surface)';
         if (isConflict) bgColor = 'rgba(192,57,43,0.22)';
@@ -65,8 +95,8 @@ export function PuzzleGrid({ gameState, onCellClick }: PuzzleGridProps) {
             aria-label={`Row ${row + 1}, Column ${col + 1}: ${suspect ? suspect.name : 'empty'}${isConflict ? ', conflict' : ''}`}
             aria-selected={false}
             tabIndex={0}
-            onClick={() => onCellClick(idx)}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onCellClick(idx); }}
+            onClick={() => !isLoading && onCellClick(idx)}
+            onKeyDown={(e) => { if (!isLoading && (e.key === 'Enter' || e.key === ' ')) onCellClick(idx); }}
             style={{
               background: bgColor,
               border: `2px solid ${borderColor}`,
@@ -75,7 +105,7 @@ export function PuzzleGrid({ gameState, onCellClick }: PuzzleGridProps) {
               alignItems: 'center',
               justifyContent: 'center',
               flexDirection: 'column',
-              cursor: isEmpty ? 'pointer' : 'default',
+              cursor: isLoading ? 'wait' : (isEmpty ? 'pointer' : 'pointer'),
               transition: isConflict
                 ? 'background-color 0ms'
                 : isSolved
@@ -83,11 +113,36 @@ export function PuzzleGrid({ gameState, onCellClick }: PuzzleGridProps) {
                 : 'background-color 150ms ease-in-out',
               position: 'relative',
               padding: '0.25rem',
+              opacity: isLoading ? 0.7 : 1,
             }}
           >
+            {isLoading && (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'rgba(0,0,0,0.3)',
+                  zIndex: 1,
+                }}
+              >
+                <div
+                  style={{
+                    width: 20,
+                    height: 20,
+                    border: '2px solid var(--noir-border)',
+                    borderTopColor: 'var(--accent-gold)',
+                    borderRadius: '50%',
+                    animation: 'spin 0.8s linear infinite',
+                  }}
+                />
+              </div>
+            )}
+
             {suspect && (
               <>
-                {/* Suspect color accent dot */}
                 <span
                   aria-hidden="true"
                   style={{
@@ -116,7 +171,6 @@ export function PuzzleGrid({ gameState, onCellClick }: PuzzleGridProps) {
               </>
             )}
 
-            {/* Solved checkmark */}
             {isSolved && suspect && (
               <span
                 aria-hidden="true"
@@ -125,6 +179,7 @@ export function PuzzleGrid({ gameState, onCellClick }: PuzzleGridProps) {
                   top: 2, right: 4,
                   fontSize: '0.6rem',
                   color: 'var(--accent-green)',
+                  zIndex: 2,
                 }}
               >
                 ✓
@@ -133,6 +188,12 @@ export function PuzzleGrid({ gameState, onCellClick }: PuzzleGridProps) {
           </div>
         );
       })}
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
