@@ -5,6 +5,7 @@ edition = "2021"
 publish = false
 authors = ["Cougr Contributors"]
 description = "Murdoku puzzle registry and creator contract using cougr-core ECS framework"
+license = "MIT OR Apache-2.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

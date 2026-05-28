@@ -2,6 +2,8 @@
 #![allow(clippy::too_many_arguments)]
 extern crate alloc;
 
+mod auth;
+
 pub mod components;
 #[cfg(not(feature = "zk"))]
 pub mod systems;
@@ -13,11 +15,12 @@ use cougr_core::ops::Ownable;
 #[cfg(not(feature = "zk"))]
 use cougr_core::plugin::GameApp;
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contracttype, panic_with_error, Address, Env, String,
-    Symbol, Vec,
+    contract, contracterror, contractimpl, contracttype, panic_with_error, symbol_short, Address,
+    Env, String, Symbol, Vec,
 };
 #[cfg(feature = "zk")]
 use soroban_sdk::{Bytes, BytesN};
+use crate::auth::{authorize_session, revoke_session};
 
 /// Errors returned by the Murdoku smart contract.
 #[contracterror]
@@ -449,6 +452,36 @@ impl MurdokuContract {
     /// Check whether a player has solved the specified puzzle.
     pub fn is_solved(env: Env, puzzle_id: u32, player: Address) -> bool {
         zk::is_solved(&env, puzzle_id, &player)
+    }
+}
+
+// ──────────────────────────────────────────────
+// Session key authorization (not feature-gated)
+// ──────────────────────────────────────────────
+#[contractimpl]
+impl MurdokuContract {
+    pub fn authorize_session(
+        env: Env,
+        player: Address,
+        puzzle_id: u32,
+        session_key: soroban_sdk::BytesN<32>,
+        expires_at_ledger: u32,
+    ) {
+        authorize_session(env, player, puzzle_id, session_key, expires_at_ledger)
+    }
+
+    pub fn revoke_session(env: Env, player: Address, puzzle_id: u32) {
+        revoke_session(env, player, puzzle_id)
+    }
+
+    pub fn place_suspect(env: Env, player: Address, puzzle_id: u32, x: u32, y: u32) {
+        crate::auth::require_player_auth(&env, &player, puzzle_id, symbol_short!("place_suspect"));
+        let _ = (x, y);
+    }
+
+    pub fn remove_suspect(env: Env, player: Address, puzzle_id: u32, x: u32, y: u32) {
+        crate::auth::require_player_auth(&env, &player, puzzle_id, symbol_short!("remove_suspect"));
+        let _ = (x, y);
     }
 }
 
